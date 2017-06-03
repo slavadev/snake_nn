@@ -1,6 +1,3 @@
-# SNAKES GAME
-# Use ARROW KEYS to play, SPACE BAR for pausing/resuming and Esc Key for exiting
-
 import curses
 from random import randint
 
@@ -96,7 +93,7 @@ class SnakeGame:
             self.done = True
 
     def generate_observations(self):
-        return [self.done, self.score, self.snake, self.food]
+        return self.done, self.score, self.snake, self.food
 
     def render_destroy(self):
         curses.endwin()
