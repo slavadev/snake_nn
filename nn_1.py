@@ -75,7 +75,7 @@ class SnakeNN:
 
     def is_direction_blocked(self, snake, direction):
         point = np.array(snake[0]) + np.array(direction)
-        return point.tolist() in snake or point[0] == 0 or point[1] == 0 or point[0] == 21 or point[1] == 21
+        return point.tolist() in snake[:-1] or point[0] == 0 or point[1] == 0 or point[0] == 21 or point[1] == 21
 
     def turn_vector_to_the_left(self, vector):
         return np.array([-vector[1], vector[0]])
@@ -148,6 +148,11 @@ class SnakeNN:
         nn_model = self.model()
         nn_model.load(self.filename)
         self.visualise_game(nn_model)
+
+    def test(self):
+        nn_model = self.model()
+        nn_model.load(self.filename)
+        self.test_model(nn_model)
 
 if __name__ == "__main__":
     SnakeNN().train()

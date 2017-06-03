@@ -59,6 +59,7 @@ class SnakeGame:
         if self.done == True: self.end_game()
         self.create_new_point(key)
         if self.food_eaten():
+            self.score += 1
             self.generate_food()
         else:
             self.remove_last_point()
@@ -89,7 +90,7 @@ class SnakeGame:
             self.snake[0][0] == self.board["width"] + 1 or
             self.snake[0][1] == 0 or
             self.snake[0][1] == self.board["height"] + 1 or
-            self.snake[0] in self.snake[1:]):
+            self.snake[0] in self.snake[1:-1]):
             self.done = True
 
     def generate_observations(self):
