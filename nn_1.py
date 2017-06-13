@@ -106,10 +106,10 @@ class SnakeNN:
             _, _, snake, _ = game.start()
             prev_observation = self.generate_observation(snake)
             for _ in range(self.goal_steps):
-                precictions = []
+                predictions = []
                 for action in range(-1, 2):
-                   precictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 4, 1)))
-                action = np.argmax(np.array(precictions))
+                   predictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 4, 1)))
+                action = np.argmax(np.array(predictions))
                 game_action = self.get_game_action(snake, action - 1)
                 done, _, snake, _  = game.step(game_action)
                 game_memory.append([prev_observation, action])
@@ -127,10 +127,10 @@ class SnakeNN:
         _, _, snake, _ = game.start()
         prev_observation = self.generate_observation(snake)
         for _ in range(self.goal_steps):
-            precictions = []
+            predictions = []
             for action in range(-1, 2):
-               precictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 4, 1)))
-            action = np.argmax(np.array(precictions))
+               predictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 4, 1)))
+            action = np.argmax(np.array(predictions))
             game_action = self.get_game_action(snake, action - 1)
             done, _, snake, _  = game.step(game_action)
             if done:
