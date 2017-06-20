@@ -8,13 +8,8 @@ from tflearn.layers.estimator import regression
 from statistics import mean
 from collections import Counter
 
-LR=1e-2
-INITIAL_GAMES = 1000
-TEST_GAMES = 100
-GOAL_STEPS = 100
-
 class SnakeNN:
-    def __init__(self, initial_games = 1000, test_games = 100, goal_steps = 100, lr = 1e-2, filename = 'snake_nn.tflearn'):
+    def __init__(self, initial_games = 100, test_games = 100, goal_steps = 100, lr = 1e-2, filename = 'snake_nn.tflearn'):
         self.initial_games = initial_games
         self.test_games = test_games
         self.goal_steps = goal_steps
@@ -42,6 +37,7 @@ class SnakeNN:
                 else:
                     training_data.append([self.add_action_to_observation(prev_observation, action), 1])
                     prev_observation = self.generate_observation(snake)
+        print(len(training_data))
         return training_data
 
     def generate_action(self, snake):
@@ -86,7 +82,7 @@ class SnakeNN:
     def model(self):
         network = input_data(shape=[None, 4, 1], name='input')
         network = fully_connected(network, 1, activation='linear')
-        network = regression(network, optimizer='adam', learning_rate=LR, loss='mean_square', name='target')
+        network = regression(network, optimizer='adam', learning_rate=self.lr, loss='mean_square', name='target')
         model = tflearn.DNN(network, tensorboard_dir='log')
         return model
 
