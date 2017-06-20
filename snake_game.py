@@ -43,12 +43,12 @@ class SnakeGame:
         self.win.clear()
         self.win.border(0)
         self.win.addstr(0, 2, 'Score : ' + str(self.score) + ' ')
-        self.win.addch(self.food[0], self.food[1], '*')
+        self.win.addch(self.food[0], self.food[1], '🍎')
         for i, point in enumerate(self.snake):
             if i == 0:
-                self.win.addch(point[0], point[1], '@')
+                self.win.addch(point[0], point[1], '🔸')
             else:
-                self.win.addch(point[0], point[1], '#')
+                self.win.addch(point[0], point[1], '🔹')
         self.win.getch()
 
     def step(self, key):
