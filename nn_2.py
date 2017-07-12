@@ -9,7 +9,7 @@ from statistics import mean
 from collections import Counter
 
 class SnakeNN:
-    def __init__(self, initial_games = 100000, test_games = 100, goal_steps = 1000, lr = 1e-3, filename = 'snake_nn_2.tflearn'):
+    def __init__(self, initial_games = 10000, test_games = 1000, goal_steps = 2000, lr = 1e-2, filename = 'snake_nn_2.tflearn'):
         self.initial_games = initial_games
         self.test_games = test_games
         self.goal_steps = goal_steps
@@ -33,7 +33,7 @@ class SnakeNN:
                 action, game_action = self.generate_action(snake)
                 done, score, snake, food  = game.step(game_action)
                 if done:
-                    training_data.append([self.add_action_to_observation(prev_observation, action), -3])
+                    training_data.append([self.add_action_to_observation(prev_observation, action), -1])
                     break
                 else:
                     food_distance = self.get_food_distance(snake, food)
