@@ -7,9 +7,12 @@ from tflearn.layers.core import input_data, fully_connected
 from tflearn.layers.estimator import regression
 from statistics import mean
 from collections import Counter
+import _thread as thread 
 
 class SnakeNN:
-    def __init__(self, initial_games = 10000, test_games = 1000, goal_steps = 2000, lr = 1e-2, filename = 'snake_nn_2.tflearn'):
+    def __init__(self, initial_games = 100, test_games = 1000, goal_steps = 2000, lr = 1e-2, filename = 'model0/snake_nn_2.tflearn',n_snakes = 2, train_ind = 1):
+        self.n_snakes = n_snakes
+        self.train_ind = train_ind
         self.initial_games = initial_games
         self.test_games = test_games
         self.goal_steps = goal_steps
@@ -22,26 +25,38 @@ class SnakeNN:
                 [[0, -1], 3]
                 ]
 
-    def initial_population(self):
+    def initial_population(self,adv_model):
         training_data = []
         for _ in range(self.initial_games):
             game = SnakeGame()
-            _, prev_score, snake, food = game.start()
-            prev_observation = self.generate_observation(snake, food)
-            prev_food_distance = self.get_food_distance(snake, food)
+            _, prev_score, snakes, food = game.start(self.n_snakes)
+            #print(snakes,self.train_ind)
+            prev_observation = self.generate_observation(snakes[self.train_ind], food)
+            prev_food_distance = self.get_food_distance(snakes[self.train_ind], food)
             for _ in range(self.goal_steps):
-                action, game_action = self.generate_action(snake)
-                done, score, snake, food  = game.step(game_action)
+                game_actions = []
+                for i in range(self.n_snakes):
+                    if i == self.train_ind:
+                        action, game_action = self.generate_action(snakes[i])
+                        game_actions += [game_action]
+                    else:
+                        predictions = []
+                        for action_i in range(-1, 2):
+                            predictions.append(adv_model.predict(self.add_action_to_observation(prev_observation, action_i).reshape(-1, 5, 1)))
+                        action_adv = np.argmax(np.array(predictions))        
+                        game_actions += [self.get_game_action(snakes[i], action_adv - 1)]
+
+                done, score, snakes, food  = game.step(game_actions)
                 if done:
                     training_data.append([self.add_action_to_observation(prev_observation, action), -1])
                     break
                 else:
-                    food_distance = self.get_food_distance(snake, food)
+                    food_distance = self.get_food_distance(snakes[self.train_ind], food)
                     if score > prev_score or food_distance < prev_food_distance:
                         training_data.append([self.add_action_to_observation(prev_observation, action), 1])
                     else:
                         training_data.append([self.add_action_to_observation(prev_observation, action), 0])
-                    prev_observation = self.generate_observation(snake, food)
+                    prev_observation = self.generate_observation(snakes[self.train_ind], food)
                     prev_food_distance = food_distance
         return training_data
 
@@ -77,6 +92,8 @@ class SnakeNN:
         return np.array(snake[0]) - np.array(snake[1])
 
     def get_food_direction_vector(self, snake, food):
+        if(food == []):
+            return np.array(snake[0])
         return np.array(food) - np.array(snake[0])
 
     def normalize_vector(self, vector):
@@ -111,37 +128,45 @@ class SnakeNN:
     def train_model(self, training_data, model):
         X = np.array([i[0] for i in training_data]).reshape(-1, 5, 1)
         y = np.array([i[1] for i in training_data]).reshape(-1, 1)
+        print(X,y,len(X),len(y))
         model.fit(X,y, n_epoch = 3, shuffle = True, run_id = self.filename)
         model.save(self.filename)
         return model
 
-    def test_model(self, model):
+    def test_model(self, model,adv_model):
         steps_arr = []
         scores_arr = []
         for _ in range(self.test_games):
             steps = 0
             game_memory = []
             game = SnakeGame()
-            _, score, snake, food = game.start()
-            prev_observation = self.generate_observation(snake, food)
+            _, score, snakes, food = game.start(self.n_snakes)
+            prev_observation = self.generate_observation(snakes[self.train_ind], food)
             for _ in range(self.goal_steps):
-                predictions = []
-                for action in range(-1, 2):
-                   predictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 5, 1)))
-                action = np.argmax(np.array(predictions))
-                game_action = self.get_game_action(snake, action - 1)
-                done, score, snake, food  = game.step(game_action)
+                game_actions = []
+                for i in range(self.n_snakes):
+                    predictions = []
+                    for action in range(-1, 2):
+                        if i == self.train_ind:
+                            predictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 5, 1)))
+                            action = np.argmax(np.array(predictions))        
+                            game_actions += [self.get_game_action(snakes[i], action - 1)]
+                        else:
+                            predictions.append(adv_model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 5, 1)))                        
+                            action_i = np.argmax(np.array(predictions))        
+                            game_actions += [self.get_game_action(snakes[i], action_i - 1)]
+                done, score, snakes, food = game.step(game_actions)
                 game_memory.append([prev_observation, action])
                 if done:
                     print('-----')
                     print(steps)
-                    print(snake)
+                    print(snakes)
                     print(food)
                     print(prev_observation)
                     print(predictions)
                     break
                 else:
-                    prev_observation = self.generate_observation(snake, food)
+                    prev_observation = self.generate_observation(snakes[self.train_ind], food)
                     steps += 1
             steps_arr.append(steps)
             scores_arr.append(score)
@@ -152,27 +177,38 @@ class SnakeNN:
 
     def visualise_game(self, model):
         game = SnakeGame(gui = True)
-        _, _, snake, food = game.start()
-        prev_observation = self.generate_observation(snake, food)
+        _, _, snakes, food = game.start(self.n_snakes)
+        prev_observation = self.generate_observation(snakes[self.train_ind], food)
         for _ in range(self.goal_steps):
-            precictions = []
+            thread.start_new_thread(game.check_input_thread, ())
+            predictions = []
             for action in range(-1, 2):
-               precictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 5, 1)))
-            action = np.argmax(np.array(precictions))
-            game_action = self.get_game_action(snake, action - 1)
-            done, _, snake, food  = game.step(game_action)
+               predictions.append(model.predict(self.add_action_to_observation(prev_observation, action).reshape(-1, 5, 1)))
+            action = np.argmax(np.array(predictions))
+            game_action = self.get_game_action(snakes[self.train_ind], action - 1)
+            done, _, snakes, food  = game.step([game.directions[0],game_action])
             if done:
                 break
             else:
-                prev_observation = self.generate_observation(snake, food)
+                prev_observation = self.generate_observation(snakes[self.train_ind], food)
 
-    def train(self):
-        training_data = self.initial_population()
+    def train(self,adversary_filename = 'hungry/snake_nn_2.tflearn'):
+        #load adversary model:
+        adv_model = self.model()
+        adv_model.load(adversary_filename)
+
+        training_data = self.initial_population(adv_model)
+
+
         nn_model = self.model()
         nn_model = self.train_model(training_data, nn_model)
         self.test_model(nn_model)
 
     def visualise(self):
+        #load adversary model:
+        #adv_model = self.model()
+        #adv_model.load(self.adversary_filename)
+
         nn_model = self.model()
         nn_model.load(self.filename)
         self.visualise_game(nn_model)
